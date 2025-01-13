@@ -1,6 +1,6 @@
 # This file is part of the django-environ.
 #
-# Copyright (c) 2021-2022, Serghei Iakovlev <egrep@protonmail.ch>
+# Copyright (c) 2021-2024, Serghei Iakovlev <oss@serghei.pl>
 # Copyright (c) 2013-2021, Daniele Faraglia <daniele.faraglia@gmail.com>
 #
 # For the full copyright and license information, please view
@@ -21,6 +21,7 @@ import warnings
 from urllib.parse import (
     parse_qs,
     ParseResult,
+    quote,
     unquote,
     unquote_plus,
     urlparse,
@@ -36,13 +37,7 @@ from .compat import (
 )
 from .fileaware_mapping import FileAwareMapping
 
-try:
-    from os import PathLike
-except ImportError:  # Python 3.5 support
-    from pathlib import PurePath as PathLike
-
-Openable = (str, PathLike)
-
+Openable = (str, os.PathLike)
 logger = logging.getLogger(__name__)
 
 
@@ -65,11 +60,15 @@ def _cast_urlstr(v):
     return unquote(v) if isinstance(v, str) else v
 
 
+def _urlparse_quote(url):
+    return urlparse(quote(url, safe=':/?&=@'))
+
+
 class NoValue:
     """Represent of no value object."""
 
     def __repr__(self):
-        return '<{}>'.format(self.__class__.__name__)
+        return f'<{self.__class__.__name__}>'
 
 
 class Env:
@@ -108,7 +107,6 @@ class Env:
     URL_CLASS = ParseResult
 
     POSTGRES_FAMILY = ['postgres', 'postgresql', 'psql', 'pgsql', 'postgis']
-    ELASTICSEARCH_FAMILY = ['elasticsearch' + x for x in ['', '2', '5', '7']]
 
     DEFAULT_DATABASE_ENV = 'DATABASE_URL'
     DB_SCHEMES = {
@@ -117,11 +115,12 @@ class Env:
         'psql': DJANGO_POSTGRES,
         'pgsql': DJANGO_POSTGRES,
         'postgis': 'django.contrib.gis.db.backends.postgis',
+        'cockroachdb': 'django_cockroachdb',
         'mysql': 'django.db.backends.mysql',
         'mysql2': 'django.db.backends.mysql',
         'mysql-connector': 'mysql.connector.django',
         'mysqlgis': 'django.contrib.gis.db.backends.mysql',
-        'mssql': 'sql_server.pyodbc',
+        'mssql': 'mssql',
         'oracle': 'django.db.backends.oracle',
         'pyodbc': 'sql_server.pyodbc',
         'redshift': 'django_redshift_backend',
@@ -186,7 +185,17 @@ class Env:
         "xapian": "haystack.backends.xapian_backend.XapianEngine",
         "simple": "haystack.backends.simple_backend.SimpleEngine",
     }
+    ELASTICSEARCH_FAMILY = [scheme + s for scheme in SEARCH_SCHEMES
+                            if scheme.startswith("elasticsearch")
+                            for s in ('', 's')]
     CLOUDSQL = 'cloudsql'
+
+    DEFAULT_CHANNELS_ENV = "CHANNELS_URL"
+    CHANNELS_SCHEMES = {
+        "inmemory": "channels.layers.InMemoryChannelLayer",
+        "redis": "channels_redis.core.RedisChannelLayer",
+        "redis+pubsub": "channels_redis.pubsub.RedisPubSubChannelLayer"
+    }
 
     def __init__(self, **scheme):
         self.smart_cast = True
@@ -336,6 +345,19 @@ class Env:
             engine=engine
         )
 
+    def channels_url(self, var=DEFAULT_CHANNELS_ENV, default=NOTSET,
+                     backend=None):
+        """Returns a config dictionary, defaulting to CHANNELS_URL.
+
+        :rtype: dict
+        """
+        return self.channels_url_config(
+            self.url(var, default=default),
+            backend=backend
+        )
+
+    channels = channels_url
+
     def path(self, var, default=NOTSET, **kwargs):
         """
         :rtype: Path
@@ -361,7 +383,7 @@ class Env:
             "get '%s' casted as '%s' with default '%s'",
             var, cast, default)
 
-        var_name = "{}{}".format(self.prefix, var)
+        var_name = f'{self.prefix}{var}'
         if var_name in self.scheme:
             var_info = self.scheme[var_name]
 
@@ -387,7 +409,7 @@ class Env:
             value = self.ENVIRON[var_name]
         except KeyError as exc:
             if default is self.NOTSET:
-                error_msg = "Set the {} environment variable".format(var)
+                error_msg = f'Set the {var_name} environment variable'
                 raise ImproperlyConfigured(error_msg) from exc
 
             value = default
@@ -430,7 +452,7 @@ class Env:
             try:
                 value = int(value) != 0
             except ValueError:
-                value = value.lower() in cls.BOOLEAN_TRUE_STRINGS
+                value = value.lower().strip() in cls.BOOLEAN_TRUE_STRINGS
         elif isinstance(cast, list):
             value = list(map(cast[0], [x for x in value.split(',') if x]))
         elif isinstance(cast, tuple):
@@ -467,14 +489,16 @@ class Env:
             if len(parts) == 1:
                 float_str = parts[0]
             else:
-                float_str = "{}.{}".format(''.join(parts[0:-1]), parts[-1])
+                float_str = f"{''.join(parts[0:-1])}.{parts[-1]}"
             value = float(float_str)
         else:
             value = cast(value)
         return value
 
     @classmethod
+    # pylint: disable=too-many-statements
     def db_url_config(cls, url, engine=None):
+        # pylint: enable-msg=too-many-statements
         """Parse an arbitrary database URL.
 
         Supports the following URL schemas:
@@ -509,10 +533,17 @@ class Env:
                     'NAME': ':memory:'
                 }
                 # note: no other settings are required for sqlite
-            url = urlparse(url)
+            try:
+                url = urlparse(url)
+            # handle Invalid IPv6 URL
+            except ValueError:
+                url = _urlparse_quote(url)
 
         config = {}
 
+        # handle unexpected URL schemes with special characters
+        if not url.path:
+            url = _urlparse_quote(urlunparse(url))
         # Remove query strings.
         path = url.path[1:]
         path = unquote_plus(path.split('?', 2)[0])
@@ -524,15 +555,15 @@ class Env:
                 # sqlalchemy)
                 path = ':memory:'
             if url.netloc:
-                warnings.warn('SQLite URL contains host component %r, '
-                              'it will be ignored' % url.netloc, stacklevel=3)
+                warnings.warn(
+                    f'SQLite URL contains host component {url.netloc!r}, '
+                    'it will be ignored',
+                    stacklevel=3
+                )
         if url.scheme == 'ldap':
-            path = '{scheme}://{hostname}'.format(
-                scheme=url.scheme,
-                hostname=url.hostname,
-            )
+            path = f'{url.scheme}://{url.hostname}'
             if url.port:
-                path += ':{port}'.format(port=url.port)
+                path += f':{url.port}'
 
         user_host = url.netloc.rsplit('@', 1)
         if url.scheme in cls.POSTGRES_FAMILY and ',' in user_host[-1]:
@@ -595,7 +626,7 @@ class Env:
             config['ENGINE'] = cls.DB_SCHEMES[config['ENGINE']]
 
         if not config.get('ENGINE', False):
-            warnings.warn("Engine not recognized from url: {}".format(config))
+            warnings.warn(f'Engine not recognized from url: {config}')
             return {}
 
         return config
@@ -617,9 +648,7 @@ class Env:
             url = urlparse(url)
 
         if url.scheme not in cls.CACHE_SCHEMES:
-            raise ImproperlyConfigured(
-                'Invalid cache schema {}'.format(url.scheme)
-            )
+            raise ImproperlyConfigured(f'Invalid cache schema {url.scheme}')
 
         location = url.netloc.split(',')
         if len(location) == 1:
@@ -707,7 +736,7 @@ class Env:
         if backend:
             config['EMAIL_BACKEND'] = backend
         elif url.scheme not in cls.EMAIL_SCHEMES:
-            raise ImproperlyConfigured('Invalid email schema %s' % url.scheme)
+            raise ImproperlyConfigured(f'Invalid email schema {url.scheme}')
         elif url.scheme in cls.EMAIL_SCHEMES:
             config['EMAIL_BACKEND'] = cls.EMAIL_SCHEMES[url.scheme]
 
@@ -729,98 +758,151 @@ class Env:
         return config
 
     @classmethod
+    def channels_url_config(cls, url, backend=None):
+        """Parse an arbitrary channels URL.
+
+        :param urllib.parse.ParseResult or str url:
+            Email URL to parse.
+        :param str or None backend:
+            If None, the backend is evaluates from the ``url``.
+        :return: Parsed channels URL.
+        :rtype: dict
+        """
+        config = {}
+        url = urlparse(url) if not isinstance(url, cls.URL_CLASS) else url
+
+        if backend:
+            config["BACKEND"] = backend
+        elif url.scheme not in cls.CHANNELS_SCHEMES:
+            raise ImproperlyConfigured(f"Invalid channels schema {url.scheme}")
+        else:
+            config["BACKEND"] = cls.CHANNELS_SCHEMES[url.scheme]
+            if url.scheme in ("redis", "redis+pubsub"):
+                config["CONFIG"] = {
+                    "hosts": [url._replace(scheme="redis").geturl()]
+                }
+
+        return config
+
+    @classmethod
+    def _parse_common_search_params(cls, url):
+        cfg = {}
+        prs = {}
+
+        if not url.query or str(url.query) == '':
+            return cfg, prs
+
+        prs = parse_qs(url.query)
+        if 'EXCLUDED_INDEXES' in prs:
+            cfg['EXCLUDED_INDEXES'] = prs['EXCLUDED_INDEXES'][0].split(',')
+        if 'INCLUDE_SPELLING' in prs:
+            val = prs['INCLUDE_SPELLING'][0]
+            cfg['INCLUDE_SPELLING'] = cls.parse_value(val, bool)
+        if 'BATCH_SIZE' in prs:
+            cfg['BATCH_SIZE'] = cls.parse_value(prs['BATCH_SIZE'][0], int)
+        return cfg, prs
+
+    @classmethod
+    def _parse_elasticsearch_search_params(cls, url, path, secure, params):
+        cfg = {}
+        split = path.rsplit('/', 1)
+
+        if len(split) > 1:
+            path = '/'.join(split[:-1])
+            index = split[-1]
+        else:
+            path = ""
+            index = split[0]
+
+        cfg['URL'] = urlunparse(
+            ('https' if secure else 'http', url[1], path, '', '', '')
+        )
+        if 'TIMEOUT' in params:
+            cfg['TIMEOUT'] = cls.parse_value(params['TIMEOUT'][0], int)
+        if 'KWARGS' in params:
+            cfg['KWARGS'] = params['KWARGS'][0]
+        cfg['INDEX_NAME'] = index
+        return cfg
+
+    @classmethod
+    def _parse_solr_search_params(cls, url, path, params):
+        cfg = {}
+        cfg['URL'] = urlunparse(('http',) + url[1:2] + (path,) + ('', '', ''))
+        if 'TIMEOUT' in params:
+            cfg['TIMEOUT'] = cls.parse_value(params['TIMEOUT'][0], int)
+        if 'KWARGS' in params:
+            cfg['KWARGS'] = params['KWARGS'][0]
+        return cfg
+
+    @classmethod
+    def _parse_whoosh_search_params(cls, params):
+        cfg = {}
+        if 'STORAGE' in params:
+            cfg['STORAGE'] = params['STORAGE'][0]
+        if 'POST_LIMIT' in params:
+            cfg['POST_LIMIT'] = cls.parse_value(params['POST_LIMIT'][0], int)
+        return cfg
+
+    @classmethod
+    def _parse_xapian_search_params(cls, params):
+        cfg = {}
+        if 'FLAGS' in params:
+            cfg['FLAGS'] = params['FLAGS'][0]
+        return cfg
+
+    @classmethod
     def search_url_config(cls, url, engine=None):
         """Parse an arbitrary search URL.
 
         :param urllib.parse.ParseResult or str url:
             Search URL to parse.
         :param str or None engine:
-            If None, the engine is evaluates from the ``url``.
+            If None, the engine is evaluating from the ``url``.
         :return: Parsed search URL.
         :rtype: dict
         """
-
         config = {}
-
         url = urlparse(url) if not isinstance(url, cls.URL_CLASS) else url
 
         # Remove query strings.
-        path = url.path[1:]
-        path = unquote_plus(path.split('?', 2)[0])
+        path = unquote_plus(url.path[1:].split('?', 2)[0])
 
-        if url.scheme not in cls.SEARCH_SCHEMES:
-            raise ImproperlyConfigured(
-                'Invalid search schema %s' % url.scheme
-            )
-        config["ENGINE"] = cls.SEARCH_SCHEMES[url.scheme]
+        scheme = url.scheme
+        secure = False
+        # elasticsearch supports secure schemes, similar to http -> https
+        if scheme in cls.ELASTICSEARCH_FAMILY and scheme.endswith('s'):
+            scheme = scheme[:-1]
+            secure = True
+        if scheme not in cls.SEARCH_SCHEMES:
+            raise ImproperlyConfigured(f'Invalid search schema {url.scheme}')
+        config['ENGINE'] = cls.SEARCH_SCHEMES[scheme]
 
         # check commons params
-        params = {}  # type: dict
-        if url.query:
-            params = parse_qs(url.query)
-            if 'EXCLUDED_INDEXES' in params:
-                config['EXCLUDED_INDEXES'] \
-                    = params['EXCLUDED_INDEXES'][0].split(',')
-            if 'INCLUDE_SPELLING' in params:
-                config['INCLUDE_SPELLING'] = cls.parse_value(
-                    params['INCLUDE_SPELLING'][0],
-                    bool
-                )
-            if 'BATCH_SIZE' in params:
-                config['BATCH_SIZE'] = cls.parse_value(
-                    params['BATCH_SIZE'][0],
-                    int
-                )
+        cfg, params = cls._parse_common_search_params(url)
+        config.update(cfg)
 
         if url.scheme == 'simple':
             return config
-        if url.scheme in ['solr'] + cls.ELASTICSEARCH_FAMILY:
-            if 'KWARGS' in params:
-                config['KWARGS'] = params['KWARGS'][0]
 
         # remove trailing slash
-        if path.endswith("/"):
+        if path.endswith('/'):
             path = path[:-1]
 
         if url.scheme == 'solr':
-            config['URL'] = urlunparse(
-                ('http',) + url[1:2] + (path,) + ('', '', '')
-            )
-            if 'TIMEOUT' in params:
-                config['TIMEOUT'] = cls.parse_value(params['TIMEOUT'][0], int)
+            config.update(cls._parse_solr_search_params(url, path, params))
             return config
 
         if url.scheme in cls.ELASTICSEARCH_FAMILY:
-            split = path.rsplit("/", 1)
-
-            if len(split) > 1:
-                path = "/".join(split[:-1])
-                index = split[-1]
-            else:
-                path = ""
-                index = split[0]
-
-            config['URL'] = urlunparse(
-                ('http',) + url[1:2] + (path,) + ('', '', '')
-            )
-            if 'TIMEOUT' in params:
-                config['TIMEOUT'] = cls.parse_value(params['TIMEOUT'][0], int)
-            config['INDEX_NAME'] = index
+            config.update(cls._parse_elasticsearch_search_params(
+                url, path, secure, params))
             return config
 
         config['PATH'] = '/' + path
 
         if url.scheme == 'whoosh':
-            if 'STORAGE' in params:
-                config['STORAGE'] = params['STORAGE'][0]
-            if 'POST_LIMIT' in params:
-                config['POST_LIMIT'] = cls.parse_value(
-                    params['POST_LIMIT'][0],
-                    int
-                )
+            config.update(cls._parse_whoosh_search_params(params))
         elif url.scheme == 'xapian':
-            if 'FLAGS' in params:
-                config['FLAGS'] = params['FLAGS'][0]
+            config.update(cls._parse_xapian_search_params(params))
 
         if engine:
             config['ENGINE'] = engine
@@ -828,7 +910,8 @@ class Env:
         return config
 
     @classmethod
-    def read_env(cls, env_file=None, overwrite=False, **overrides):
+    def read_env(cls, env_file=None, overwrite=False, parse_comments=False,
+                 encoding='utf8', **overrides):
         r"""Read a .env file into os.environ.
 
         If not given a path to a dotenv path, does filthy magic stack
@@ -848,6 +931,9 @@ class Env:
             the Django settings module from the Django project root.
         :param overwrite: ``overwrite=True`` will force an overwrite of
             existing environment variables.
+        :param parse_comments: Determines whether to recognize and ignore
+           inline comments in the .env file. Default is False.
+        :param encoding: The encoding to use when reading the environment file.
         :param \**overrides: Any additional keyword arguments provided directly
             to read_env will be added to the environment. If the key matches an
             existing environment variable, the value will be overridden.
@@ -868,7 +954,7 @@ class Env:
         try:
             if isinstance(env_file, Openable):
                 # Python 3.5 support (wrap path with str).
-                with open(str(env_file), encoding='utf-8') as f:
+                with open(str(env_file), encoding=encoding) as f:
                     content = f.read()
             else:
                 with env_file as f:
@@ -891,14 +977,40 @@ class Env:
         for line in content.splitlines():
             m1 = re.match(r'\A(?:export )?([A-Za-z_0-9]+)=(.*)\Z', line)
             if m1:
+
+                # Example:
+                #
+                # line: KEY_499=abc#def
+                # key:  KEY_499
+                # val:  abc#def
                 key, val = m1.group(1), m1.group(2)
-                m2 = re.match(r"\A'(.*)'\Z", val)
-                if m2:
-                    val = m2.group(1)
+
+                if not parse_comments:
+                    # Default behavior
+                    #
+                    # Look for value in single quotes
+                    m2 = re.match(r"\A'(.*)'\Z", val)
+                    if m2:
+                        val = m2.group(1)
+                else:
+                    # Ignore post-# comments (outside quotes).
+                    # Something like ['val'  # comment] becomes ['val'].
+                    m2 = re.match(r"\A\s*'(?<!\\)(.*)'\s*(#.*\s*)?\Z", val)
+                    if m2:
+                        val = m2.group(1)
+                    else:
+                        # For no quotes, find value, ignore comments
+                        # after the first #
+                        m2a = re.match(r"\A(.*?)(#.*\s*)?\Z", val)
+                        if m2a:
+                            val = m2a.group(1)
+
+                # Look for value in double quotes
                 m3 = re.match(r'\A"(.*)"\Z', val)
                 if m3:
                     val = re.sub(r'\\(.)', _keep_escaped_format_characters,
                                  m3.group(1))
+
                 overrides[key] = str(val)
             elif not line or line.startswith('#'):
                 # ignore warnings for empty line-breaks or comments
@@ -1021,7 +1133,7 @@ class Path:
         return item.__root__.startswith(base_path)
 
     def __repr__(self):
-        return "<Path:{}>".format(self.__root__)
+        return f'<Path:{self.__root__}>'
 
     def __str__(self):
         return self.__root__
@@ -1048,5 +1160,6 @@ class Path:
         absolute_path = os.path.abspath(os.path.join(base, *paths))
         if kwargs.get('required', False) and not os.path.exists(absolute_path):
             raise ImproperlyConfigured(
-                "Create required path: {}".format(absolute_path))
+                f'Create required path: {absolute_path}'
+            )
         return absolute_path
