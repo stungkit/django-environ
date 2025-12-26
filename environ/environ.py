@@ -194,7 +194,9 @@ class Env:
     CHANNELS_SCHEMES = {
         "inmemory": "channels.layers.InMemoryChannelLayer",
         "redis": "channels_redis.core.RedisChannelLayer",
-        "redis+pubsub": "channels_redis.pubsub.RedisPubSubChannelLayer"
+        "rediss": "channels_redis.core.RedisChannelLayer",
+        "redis+pubsub": "channels_redis.pubsub.RedisPubSubChannelLayer",
+        "rediss+pubsub": "channels_redis.pubsub.RedisPubSubChannelLayer",
     }
 
     def __init__(self, **scheme):
@@ -777,9 +779,10 @@ class Env:
             raise ImproperlyConfigured(f"Invalid channels schema {url.scheme}")
         else:
             config["BACKEND"] = cls.CHANNELS_SCHEMES[url.scheme]
-            if url.scheme in ("redis", "redis+pubsub"):
+            if url.scheme.startswith("redis"):
+                redis_scheme, *_ = url.scheme.split("+")
                 config["CONFIG"] = {
-                    "hosts": [url._replace(scheme="redis").geturl()]
+                    "hosts": [url._replace(scheme=redis_scheme).geturl()]
                 }
 
         return config
