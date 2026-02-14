@@ -98,7 +98,7 @@ it and return a ``urllib.parse.ParseResult``. These strings from ``os.environ``
 are loaded from a ``.env`` file and filled in ``os.environ`` with ``setdefault``
 method, to avoid to overwrite the real environ.
 A similar approach is used in
-`Two Scoops of Django <https://web.archive.org/web/20240121133956/https://www.feldroy.com/books/two-scoops-of-django-3-x>`_
+`Two Scoops of Django <https://www.feldroy.com/two-scoops-of-django>`_
 book and explained in `12factor-django <https://dev.to/ale_jacques/django-drf-12-factor-app-with-examples-36jg>`_
 article.
 
