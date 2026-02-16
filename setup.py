@@ -2,6 +2,7 @@
 #
 # This file is part of the django-environ.
 #
+# Copyright (c) 2024-present, Daniele Faraglia <daniele.faraglia@gmail.com>
 # Copyright (c) 2021-2024, Serghei Iakovlev <oss@serghei.pl>
 # Copyright (c) 2013-2021, Daniele Faraglia <daniele.faraglia@gmail.com>
 #
@@ -144,6 +145,8 @@ CLASSIFIERS = [
     'Framework :: Django :: 4.2',
     'Framework :: Django :: 5.0',
     'Framework :: Django :: 5.1',
+    'Framework :: Django :: 5.2',
+    'Framework :: Django :: 6.0',
 
     'Operating System :: OS Independent',
 
