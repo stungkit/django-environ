@@ -166,7 +166,6 @@ CLASSIFIERS = [
     'Topic :: Software Development :: Libraries :: Python Modules',
     'Topic :: Utilities',
 
-    'License :: OSI Approved :: MIT License',
 ]
 
 # Dependencies that are downloaded by pip on installation and why.
