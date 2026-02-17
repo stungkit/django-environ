@@ -237,13 +237,20 @@ class Env:
             self,
             var,
             default: Union[str, NoValue] = NOTSET,
-            multiline=False) -> str:
+            multiline=False,
+            choices=NOTSET) -> str:
         """
         :rtype: str
         """
         value = self.get_value(var, cast=str, default=default)
         if multiline:
             return re.sub(r'(\\r)?\\n', r'\n', value)
+        if choices is not self.NOTSET:
+            # if choices is provided, check that the value is in choices
+            if value not in choices:
+                raise ImproperlyConfigured(
+                    f"Invalid value: {value} not in {choices}"
+                )
         return value
 
     def bytes(
