@@ -19,7 +19,7 @@ import os
 import re
 import sys
 import warnings
-from typing import Union, TypeVar, List, Tuple, Dict
+from typing import Dict, List, Tuple, Union
 from urllib.parse import (
     parse_qs,
     ParseResult,
@@ -220,7 +220,11 @@ class Env:
     def __contains__(self, var):
         return var in self.ENVIRON
 
-    def str(self, var, default: Union[str, NoValue] = NOTSET, multiline=False) -> str:
+    def str(
+            self,
+            var,
+            default: Union[str, NoValue] = NOTSET,
+            multiline=False) -> str:
         """
         :rtype: str
         """
@@ -229,7 +233,11 @@ class Env:
             return re.sub(r'(\\r)?\\n', r'\n', value)
         return value
 
-    def bytes(self, var, default: Union[bytes, NoValue] = NOTSET, encoding='utf8') -> bytes:
+    def bytes(
+            self,
+            var,
+            default: Union[bytes, NoValue] = NOTSET,
+            encoding='utf8') -> bytes:
         """
         :rtype: bytes
         """
@@ -299,7 +307,11 @@ class Env:
             parse_default=True
         )
 
-    def db_url(self, var=DEFAULT_DATABASE_ENV, default=NOTSET, engine=None) -> Dict:
+    def db_url(
+            self,
+            var=DEFAULT_DATABASE_ENV,
+            default=NOTSET,
+            engine=None) -> Dict:
         """Returns a config dictionary, defaulting to DATABASE_URL.
 
         The db method is an alias for db_url.
@@ -313,7 +325,11 @@ class Env:
 
     db = db_url
 
-    def cache_url(self, var=DEFAULT_CACHE_ENV, default=NOTSET, backend=None) -> Dict:
+    def cache_url(
+            self,
+            var=DEFAULT_CACHE_ENV,
+            default=NOTSET,
+            backend=None) -> Dict:
         """Returns a config dictionary, defaulting to CACHE_URL.
 
         The cache method is an alias for cache_url.
@@ -327,7 +343,11 @@ class Env:
 
     cache = cache_url
 
-    def email_url(self, var=DEFAULT_EMAIL_ENV, default=NOTSET, backend=None) -> Dict:
+    def email_url(
+            self,
+            var=DEFAULT_EMAIL_ENV,
+            default=NOTSET,
+            backend=None) -> Dict:
         """Returns a config dictionary, defaulting to EMAIL_URL.
 
         The email method is an alias for email_url.
@@ -341,7 +361,11 @@ class Env:
 
     email = email_url
 
-    def search_url(self, var=DEFAULT_SEARCH_ENV, default: Union[Dict, NoValue] = NOTSET, engine=None) -> Dict:
+    def search_url(
+            self,
+            var=DEFAULT_SEARCH_ENV,
+            default: Union[Dict, NoValue] = NOTSET,
+            engine=None) -> Dict:
         """Returns a config dictionary, defaulting to SEARCH_URL.
 
         :rtype: dict
@@ -351,8 +375,11 @@ class Env:
             engine=engine
         )
 
-    def channels_url(self, var=DEFAULT_CHANNELS_ENV, default: Union[Dict, NoValue] = NOTSET,
-                     backend=None) -> Dict:
+    def channels_url(
+            self,
+            var=DEFAULT_CHANNELS_ENV,
+            default: Union[Dict, NoValue] = NOTSET,
+            backend=None) -> Dict:
         """Returns a config dictionary, defaulting to CHANNELS_URL.
 
         :rtype: dict
@@ -364,7 +391,11 @@ class Env:
 
     channels = channels_url
 
-    def path(self, var, default: Union['Path', NoValue] = NOTSET, **kwargs) -> 'Path':
+    def path(
+            self,
+            var,
+            default: Union['Path', NoValue] = NOTSET,
+            **kwargs) -> 'Path':
         """
         :rtype: Path
         """
