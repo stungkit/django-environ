@@ -129,6 +129,24 @@ To disable it use ``env.smart_cast = False``.
    The next major release will disable it by default.
 
 
+Warn when defaults are used
+===========================
+
+If you want visibility when a missing environment variable falls back to a
+default value, enable warnings on the ``Env`` instance:
+
+.. code-block:: python
+
+   import environ
+
+   env = environ.Env()
+   env.warn_on_default = True
+   value = env("MISSING_VAR", default="fallback")
+
+When enabled, ``django-environ`` emits ``DefaultValueWarning`` for missing
+variables that return an explicit default.
+
+
 Multiple redis cache locations
 ==============================
 
@@ -286,6 +304,29 @@ The following example demonstrates the above:
 
    print(env.str('ESCAPED_CERT', multiline=False))
    # ---BEGIN---\\n---END---
+
+Restrict string values with choices
+===================================
+
+You can restrict ``env.str()`` to an allowed list of values using
+``choices``. If the value is not in the provided list,
+``ImproperlyConfigured`` is raised.
+
+.. code-block:: python
+
+   import environ
+   from django.core.exceptions import ImproperlyConfigured
+
+   env = environ.Env()
+
+   # APP_ENV=prod
+   env.str("APP_ENV", choices=("dev", "prod", "staging"))  # "prod"
+
+   # APP_ENV=unknown
+   try:
+       env.str("APP_ENV", choices=("dev", "prod", "staging"))
+   except ImproperlyConfigured:
+       ...
 
 Proxy value
 ===========

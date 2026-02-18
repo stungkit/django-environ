@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is inspired by `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
+`v0.13.0`_ - 18-February-2026
+-----------------------------
+Added
++++++
+- Added optional warnings when defaults are used
+  `#582 <https://github.com/joke2k/django-environ/pull/582>`_.
+- Added `choices` argument support for value validation in ``Env.str(...)``
+  `#555 <https://github.com/joke2k/django-environ/pull/555>`_.
+- Added Valkey support via ``valkey://`` and ``valkeys://`` cache URL schemes
+  `#554 <https://github.com/joke2k/django-environ/pull/554>`_.
+- Added support for ``rediss://`` scheme in channels URL parsing
+  `#573 <https://github.com/joke2k/django-environ/pull/573>`_.
+- Added django-prometheus database backend aliases to DB URL parsing schemes
+  `#559 <https://github.com/joke2k/django-environ/pull/559>`_.
+
+Changed
++++++++
+- Declared support for Python 3.14
+  `#580 <https://github.com/joke2k/django-environ/pull/580>`_.
+- Declared support for Django 5.2 and Django 6.0
+  `#578 <https://github.com/joke2k/django-environ/pull/578>`_.
+
+Fixed
++++++
+- Improved type hint coverage and related lint issues
+  `#546 <https://github.com/joke2k/django-environ/pull/546>`_.
+- Fixed typos in the FAQ page
+  `#445 <https://github.com/joke2k/django-environ/pull/445>`_.
+
+
 `v0.12.1`_ - 13-February-2026
 -----------------------------
 Fixed
@@ -434,6 +464,7 @@ Added
 - Initial release.
 
 
+.. _v0.13.0: https://github.com/joke2k/django-environ/compare/v0.12.1...v0.13.0
 .. _v0.12.1: https://github.com/joke2k/django-environ/compare/v0.12.0...v0.12.1
 .. _v0.12.0: https://github.com/joke2k/django-environ/compare/v0.11.2...v0.12.0
 .. _v0.11.2: https://github.com/joke2k/django-environ/compare/v0.11.1...v0.11.2
