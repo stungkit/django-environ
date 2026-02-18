@@ -73,6 +73,10 @@ class NoValue:
         return f'<{self.__class__.__name__}>'
 
 
+class DefaultValueWarning(UserWarning):
+    """Warning used when returning an explicit default value."""
+
+
 class Env:
     """Provide scheme-based lookups of environment variables so that each
     caller doesn't have to pass in ``cast`` and ``default`` parameters.
@@ -219,6 +223,7 @@ class Env:
     def __init__(self, **scheme):
         self.smart_cast = True
         self.escape_proxy = False
+        self.warn_on_default = False
         self.prefix = ""
         self.scheme = scheme
 
@@ -470,6 +475,13 @@ class Env:
                 raise ImproperlyConfigured(error_msg) from exc
 
             value = default
+            if self.warn_on_default:
+                warnings.warn(
+                    f'{var_name} environment variable not set; '
+                    'using default value',
+                    DefaultValueWarning,
+                    stacklevel=2,
+                )
 
         # Resolve any proxied values
         prefix = b'$' if isinstance(value, bytes) else '$'
