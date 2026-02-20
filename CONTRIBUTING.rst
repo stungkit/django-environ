@@ -41,6 +41,31 @@ fits with the scope and aims of the project. It's up to *you* to make a strong
 case to convince the project's developers of the merits of this feature. Please
 provide as much detail and context as possible.
 
+Local setup quick start
+-----------------------
+
+For a quick local setup and test run:
+
+1. Create and activate a virtual environment:
+
+   .. code-block:: bash
+
+      python3 -m venv .venv
+      . .venv/bin/activate
+
+2. Install development dependencies:
+
+   .. code-block:: bash
+
+      python -m pip install -U pip tox tox-gh-actions setuptools
+
+3. Run the test suite (or one environment while iterating):
+
+   .. code-block:: bash
+
+      tox
+      tox -e py312-django51
+
 Pull requests
 -------------
 
