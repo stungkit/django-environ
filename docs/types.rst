@@ -149,20 +149,27 @@ This produces:
 
    {"OPTIONS": {"sql_mode": "STRICT_TRANS_TABLES"}}
 
-If a value needs explicit typing (for example booleans), use
-``options_cast``:
+If a value needs explicit typing (for example booleans or JSON), use
+``options_cast`` with an explicit URL and expected result:
 
 .. code-block:: python
 
+   import json
    import environ
 
-   env = environ.Env()
-   config = env.db_url(
+   url = (
+       "mysql://user:password@host:3306/dbname?"
+       "reconnect=true&ssl=%7B%22ca%22%3A%22%2Fapp%2Ffoo%2Fca.pem%22%7D"
+   )
+   config = environ.Env.db_url_config(
+       url,
        options_cast={
-           "ssl": bool,
            "reconnect": bool,
+           "ssl": json.loads,
        }
    )
+
+   # {"OPTIONS": {"reconnect": True, "ssl": {"ca": "/app/foo/ca.pem"}}}
 
 Only mapped keys are cast with the provided type/callable. Unmapped options
 keep the default parsing behavior.
