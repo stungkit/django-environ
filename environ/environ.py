@@ -336,7 +336,8 @@ class Env:
             self,
             var=DEFAULT_DATABASE_ENV,
             default=NOTSET,
-            engine=None) -> Dict:
+            engine=None,
+            options_cast=None) -> Dict:
         """Returns a config dictionary, defaulting to DATABASE_URL.
 
         The db method is an alias for db_url.
@@ -345,7 +346,8 @@ class Env:
         """
         return self.db_url_config(
             self.get_value(var, default=default),
-            engine=engine
+            engine=engine,
+            options_cast=options_cast
         )
 
     db = db_url
@@ -565,8 +567,17 @@ class Env:
         return value
 
     @classmethod
+    def _cast_db_option(cls, key, value, options_cast):
+        if options_cast and key in options_cast:
+            cast = options_cast[key]
+            if isinstance(cast, type):
+                return cls.parse_value(value, cast)
+            return cast(value)
+        return _cast_int(value)
+
+    @classmethod
     # pylint: disable=too-many-statements
-    def db_url_config(cls, url, engine=None):
+    def db_url_config(cls, url, engine=None, options_cast=None):
         # pylint: enable-msg=too-many-statements
         """Parse an arbitrary database URL.
 
@@ -589,6 +600,9 @@ class Env:
             Database URL to parse.
         :param str or None engine:
             If None, the database engine is evaluates from the ``url``.
+        :param dict|None options_cast:
+            Optional per-option cast mapping for query-string-derived
+            ``OPTIONS`` values. Unmapped options keep default casting behavior.
         :return: Parsed database URL.
         :rtype: dict
         """
@@ -692,7 +706,9 @@ class Env:
                 if k.upper() in cls._DB_BASE_OPTIONS:
                     config.update({k.upper(): _cast(v[0])})
                 else:
-                    config_options.update({k: _cast_int(v[0])})
+                    config_options.update({
+                        k: cls._cast_db_option(k, v[0], options_cast)
+                    })
             config['OPTIONS'] = config_options
 
         if engine:

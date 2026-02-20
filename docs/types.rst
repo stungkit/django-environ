@@ -128,6 +128,27 @@ For more detailed example see ":ref:`complex_dict_format`".
       SQLite connects to file based databases. URL schemas ``sqlite://`` or
       ``sqlite://:memory:`` means the database is in the memory (not a file on disk).
 
+Query option casting for ``db_url``
+-----------------------------------
+
+You can cast specific query-string-derived database ``OPTIONS`` using
+``options_cast``.
+
+.. code-block:: python
+
+   import environ
+
+   env = environ.Env()
+   config = env.db_url(
+       options_cast={
+           "ssl": bool,
+           "reconnect": bool,
+       }
+   )
+
+Only mapped keys are cast with the provided type/callable. Unmapped options
+keep the default parsing behavior.
+
 
 .. _environ-env-cache-url:
 
