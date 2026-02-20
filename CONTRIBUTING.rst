@@ -54,11 +54,13 @@ project:
 1. Check for open issues or open a fresh issue to start a discussion around a
    feature idea or a bug.
 2. Fork `the repository <https://github.com/joke2k/django-environ>`_
-   on GitHub to start making your changes to the ``develop`` branch
-   (or branch off of it).
-3. Write a test which shows that the bug was fixed or that the feature works as
+   on GitHub and create your topic branch from ``develop``.
+3. Open your pull request against ``develop``.
+4. ``main`` is the stable/release branch and is updated from ``develop`` by
+   maintainers as part of the release flow.
+5. Write a test which shows that the bug was fixed or that the feature works as
    expected.
-4. Send a pull request and bug the maintainer until it gets merged and published.
+6. Send a pull request and bug the maintainer until it gets merged and published.
 
 If you are intending to implement a fairly large feature we'd appreciate if you
 open an issue with GitHub detailing your use case and intended solution to
