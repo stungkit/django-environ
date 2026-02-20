@@ -400,6 +400,18 @@ def test_database_options_parsing_without_specific_cast():
     }
 
 
+def test_database_options_parsing_with_callable_specific_cast():
+    url = 'mysql://user:pass@host:1234/dbname?ssl=true&retry_count=2'
+    url = Env.db_url_config(
+        url,
+        options_cast={'ssl': lambda value: value.upper()},
+    )
+    assert url['OPTIONS'] == {
+        'ssl': 'TRUE',
+        'retry_count': 2,
+    }
+
+
 def test_unknown_engine_warns_and_returns_empty_dict(recwarn):
     result = Env.db_url_config('localhost')
 
