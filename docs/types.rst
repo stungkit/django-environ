@@ -128,11 +128,29 @@ For more detailed example see ":ref:`complex_dict_format`".
       SQLite connects to file based databases. URL schemas ``sqlite://`` or
       ``sqlite://:memory:`` means the database is in the memory (not a file on disk).
 
-Query option casting for ``db_url``
------------------------------------
+Database query options in ``db_url``
+------------------------------------
 
-You can cast specific query-string-derived database ``OPTIONS`` using
-``options_cast``.
+Query parameters from ``DATABASE_URL`` are mapped to Django database settings:
+
+- known base keys (for example ``conn_max_age``, ``autocommit``,
+  ``atomic_requests``) are promoted to top-level DB config keys;
+- all other query params are stored in ``OPTIONS``.
+
+For MySQL strict mode, for example:
+
+.. code-block:: shell
+
+   DATABASE_URL=mysql://user:password@host:3306/dbname?sql_mode=STRICT_TRANS_TABLES
+
+This produces:
+
+.. code-block:: python
+
+   {"OPTIONS": {"sql_mode": "STRICT_TRANS_TABLES"}}
+
+If a value needs explicit typing (for example booleans), use
+``options_cast``:
 
 .. code-block:: python
 
@@ -148,7 +166,6 @@ You can cast specific query-string-derived database ``OPTIONS`` using
 
 Only mapped keys are cast with the provided type/callable. Unmapped options
 keep the default parsing behavior.
-
 
 .. _environ-env-cache-url:
 
