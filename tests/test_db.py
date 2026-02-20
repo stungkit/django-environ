@@ -369,6 +369,37 @@ def test_database_options_parsing():
     }
 
 
+def test_database_options_parsing_with_specific_cast():
+    url = (
+        'mysql://user:pass@host:1234/dbname?'
+        'reconnect=true&init_command=SET storage_engine=INNODB&connect_timeout=10'
+    )
+    url = Env.db_url_config(url, options_cast={'reconnect': bool})
+    assert url['OPTIONS'] == {
+        'reconnect': True,
+        'init_command': 'SET storage_engine=INNODB',
+        'connect_timeout': 10,
+    }
+
+
+def test_database_options_parsing_with_db_url_specific_cast():
+    env = Env()
+    env.ENVIRON['DATABASE_URL'] = 'mysql://user:pass@host:1234/dbname?ssl=true'
+    url = env.db_url(options_cast={'ssl': bool})
+    assert url['OPTIONS'] == {
+        'ssl': True,
+    }
+
+
+def test_database_options_parsing_without_specific_cast():
+    url = 'mysql://user:pass@host:1234/dbname?reconnect=true&ssl=true'
+    url = Env.db_url_config(url)
+    assert url['OPTIONS'] == {
+        'reconnect': 'true',
+        'ssl': 'true',
+    }
+
+
 def test_unknown_engine_warns_and_returns_empty_dict(recwarn):
     result = Env.db_url_config('localhost')
 
