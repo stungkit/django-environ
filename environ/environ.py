@@ -746,6 +746,8 @@ class Env:
         if url.scheme not in cls.CACHE_SCHEMES:
             raise ImproperlyConfigured(f'Invalid cache schema {url.scheme}')
 
+        parsed_query = parse_qs(url.query) if url.query else {}
+
         location = url.netloc.split(',')
         if len(location) == 1:
             location = location[0]
@@ -785,10 +787,12 @@ class Env:
             else:
                 config['LOCATION'] = locations
 
+            cls._redis_set_db_in_location(config, url, parsed_query, locations)
+
         if backend:
             config['BACKEND'] = backend
 
-        if url.query:
+        if parsed_query:
             config_options = {}
             # Django Redis cache backend expects options in lower case
             # while "django_redis" expects them in upper case
@@ -798,7 +802,7 @@ class Env:
             else:
                 key_modifier = 'upper'
 
-            for k, v in parse_qs(url.query).items():
+            for k, v in parsed_query.items():
                 key = getattr(k, key_modifier)()
                 opt = {key: _cast(v[0])}
                 if k.upper() in cls._CACHE_BASE_OPTIONS:
@@ -808,6 +812,25 @@ class Env:
             config['OPTIONS'] = config_options
 
         return config
+
+    @classmethod
+    def _redis_set_db_in_location(cls, config, url, parsed_query, locations):
+        if url.hostname:
+            return
+        db_values = None
+        for key in tuple(parsed_query):
+            if key.lower() == 'db':
+                db_values = parsed_query.pop(key)
+                break
+        if not db_values:
+            return
+        db_suffix = f'?db={db_values[0]}'
+        if len(locations) == 1:
+            config['LOCATION'] = f'{config["LOCATION"]}{db_suffix}'
+        else:
+            config['LOCATION'] = [
+                f'{location}{db_suffix}' for location in locations
+            ]
 
     @classmethod
     def email_url_config(cls, url, backend=None):
