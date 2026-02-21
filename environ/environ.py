@@ -337,7 +337,8 @@ class Env:
             var=DEFAULT_DATABASE_ENV,
             default=NOTSET,
             engine=None,
-            options_cast=None) -> Dict:
+            options_cast=None,
+            extra_options=None) -> Dict:
         """Returns a config dictionary, defaulting to DATABASE_URL.
 
         The db method is an alias for db_url.
@@ -347,7 +348,8 @@ class Env:
         return self.db_url_config(
             self.get_value(var, default=default),
             engine=engine,
-            options_cast=options_cast
+            options_cast=options_cast,
+            extra_options=extra_options,
         )
 
     db = db_url
@@ -577,7 +579,8 @@ class Env:
 
     @classmethod
     # pylint: disable=too-many-statements
-    def db_url_config(cls, url, engine=None, options_cast=None):
+    def db_url_config(cls, url, engine=None, options_cast=None,
+                      extra_options=None):
         # pylint: enable-msg=too-many-statements
         """Parse an arbitrary database URL.
 
@@ -603,6 +606,9 @@ class Env:
         :param dict|None options_cast:
             Optional per-option cast mapping for query-string-derived
             ``OPTIONS`` values. Unmapped options keep default casting behavior.
+        :param dict|None extra_options:
+            Optional dictionary merged into ``OPTIONS`` after URL parsing.
+            Values in ``extra_options`` override query-string ``OPTIONS``.
         :return: Parsed database URL.
         :rtype: dict
         """
@@ -710,6 +716,9 @@ class Env:
                         k: cls._cast_db_option(k, v[0], options_cast)
                     })
             config['OPTIONS'] = config_options
+        if extra_options:
+            config.setdefault('OPTIONS', {})
+            config['OPTIONS'].update(extra_options)
 
         if engine:
             config['ENGINE'] = engine
