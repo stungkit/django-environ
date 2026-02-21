@@ -174,6 +174,21 @@ If a value needs explicit typing (for example booleans or JSON), use
 Only mapped keys are cast with the provided type/callable. Unmapped options
 keep the default parsing behavior.
 
+For values that are not practical to pass in a URL query string (for example
+nested dictionaries like Django 5.1 PostgreSQL ``pool`` options), pass
+``extra_options`` and they will be merged into ``OPTIONS``:
+
+.. code-block:: python
+
+   config = environ.Env.db_url_config(
+       "postgres://user:password@host:5432/dbname",
+       extra_options={
+           "pool": {"min_size": 2, "max_size": 4, "timeout": 10},
+       },
+   )
+
+   # {"OPTIONS": {"pool": {"min_size": 2, "max_size": 4, "timeout": 10}}}
+
 .. _environ-env-cache-url:
 
 ``environ.Env.cache_url``
