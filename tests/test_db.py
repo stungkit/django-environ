@@ -413,6 +413,17 @@ def test_database_options_parsing_with_extra_options_override():
     }
 
 
+def test_database_extra_options_are_not_cast():
+    url = 'mysql://user:pass@host:1234/dbname?ssl=true'
+    url = Env.db_url_config(
+        url,
+        options_cast={'ssl': bool},
+        extra_options={'ssl': 'false'},
+    )
+    assert url['OPTIONS']['ssl'] == 'false'
+    assert isinstance(url['OPTIONS']['ssl'], str)
+
+
 def test_database_options_parsing_without_specific_cast():
     url = 'mysql://user:pass@host:1234/dbname?reconnect=true&ssl=true'
     url = Env.db_url_config(url)

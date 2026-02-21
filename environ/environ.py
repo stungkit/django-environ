@@ -332,6 +332,7 @@ class Env:
             parse_default=True
         )
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def db_url(
             self,
             var=DEFAULT_DATABASE_ENV,
@@ -351,6 +352,7 @@ class Env:
             options_cast=options_cast,
             extra_options=extra_options,
         )
+    # pylint: enable=too-many-arguments,too-many-positional-arguments
 
     db = db_url
 
