@@ -23,7 +23,7 @@ Added
 Changed
 +++++++
 - Declared support for Python 3.14
-  `#580 <https://github.com/joke2k/django-environ/pull/580>`_.
+  `#580 <https://github.com/joke2k/django-environ/pull/581>`_.
 - Declared support for Django 5.2 and Django 6.0
   `#578 <https://github.com/joke2k/django-environ/pull/578>`_.
 
