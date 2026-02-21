@@ -185,17 +185,17 @@ def test_redis_parsing(redis_driver, client_class_key, password_key):
         }
 
 
-@pytest.mark.parametrize('redis_driver,db_key',
+@pytest.mark.parametrize('redis_driver,client_class_key',
     [
-        ('django.core.cache.backends.redis.RedisCache', 'db'),
-        ('django_redis.cache.RedisCache', 'DB'),
+        ('django.core.cache.backends.redis.RedisCache', 'client_class'),
+        ('django_redis.cache.RedisCache', 'CLIENT_CLASS'),
     ],
     ids=[
         'django',
         'django_redis',
     ],
 )
-def test_redis_socket_url(redis_driver, db_key):
+def test_redis_socket_url(redis_driver, client_class_key):
     mocked_cache_schemes = Env.CACHE_SCHEMES.copy()
     mocked_cache_schemes.update({
         'rediscache': redis_driver,
@@ -203,13 +203,14 @@ def test_redis_socket_url(redis_driver, db_key):
         'rediss': redis_driver,
     })
     with mock.patch.object(Env, 'CACHE_SCHEMES', mocked_cache_schemes):
-        url = 'redis://:redispass@/path/to/socket.sock?db=0'
+        url = ('redis://:redispass@/path/to/socket.sock?db=0'
+               '&client_class=django_redis.client.DefaultClient')
         url = Env.cache_url_config(url)
 
         assert url['BACKEND'] == redis_driver
-        assert url['LOCATION'] == 'unix://:redispass@/path/to/socket.sock'
+        assert url['LOCATION'] == 'unix://:redispass@/path/to/socket.sock?db=0'
         assert url['OPTIONS'] == {
-            db_key: 0
+            client_class_key: 'django_redis.client.DefaultClient'
         }
 
 
