@@ -14,6 +14,7 @@ variables to configure your Django application.
 
 import ast
 import itertools
+import json
 import logging
 import os
 import re
@@ -33,7 +34,6 @@ from urllib.parse import (
 from .compat import (
     DJANGO_POSTGRES,
     ImproperlyConfigured,
-    json,
     PYMEMCACHE_DRIVER,
     REDIS_DRIVER,
 )
