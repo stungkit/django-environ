@@ -340,7 +340,7 @@ Restrict string values with choices
 
 You can restrict ``env.str()`` to an allowed list of values using
 ``choices``. If the value is not in the provided list,
-``ImproperlyConfigured`` is raised.
+``ImproperlyConfigured`` is raised.django.core.exceptions
 
 .. code-block:: python
 

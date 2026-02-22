@@ -15,12 +15,12 @@ import io
 import warnings
 from urllib.parse import quote
 
+from django.core.exceptions import ImproperlyConfigured
 import pytest
 
 from environ import DefaultValueWarning, Env, Path
 from environ.compat import (
     DJANGO_POSTGRES,
-    ImproperlyConfigured,
     REDIS_DRIVER,
 )
 from .asserts import assert_type_and_value

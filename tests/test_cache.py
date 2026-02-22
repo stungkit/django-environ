@@ -10,11 +10,12 @@
 from unittest import mock
 
 import pytest
+import django
+from django.core.exceptions import ImproperlyConfigured
 
 import environ.compat
 from environ import Env
 from environ.compat import (
-    ImproperlyConfigured,
     PYMEMCACHE_DRIVER,
     REDIS_DRIVER,
 )
@@ -121,12 +122,12 @@ def test_cache_parsing(url, backend, location):
     assert url['LOCATION'] == location
 
 
-@pytest.mark.parametrize('django_version', ((3, 2), (3, 1), None))
+@pytest.mark.parametrize('django_version', ((3, 2), (3, 1)))
 @pytest.mark.parametrize('pymemcache_installed', (True, False))
 def test_pymemcache_compat(django_version, pymemcache_installed):
     old = 'django.core.cache.backends.memcached.PyLibMCCache'
     new = 'django.core.cache.backends.memcached.PyMemcacheCache'
-    with mock.patch.object(environ.compat, 'DJANGO_VERSION', django_version):
+    with mock.patch.object(django, 'VERSION', django_version):
         with mock.patch('environ.compat.find_spec') as mock_find_spec:
             mock_find_spec.return_value = pymemcache_installed
             driver = environ.compat.choose_pymemcache_driver()
@@ -136,14 +137,14 @@ def test_pymemcache_compat(django_version, pymemcache_installed):
                 assert driver == new if pymemcache_installed else old
 
 
-@pytest.mark.parametrize('django_version', ((4, 0), (3, 2), None))
+@pytest.mark.parametrize('django_version', ((4, 0), (3, 2)))
 @pytest.mark.parametrize('django_redis_installed', (True, False))
 def test_rediscache_compat(django_version, django_redis_installed):
     django_new = 'django.core.cache.backends.redis.RedisCache'
     redis_cache = 'redis_cache.RedisCache'
     django_redis = 'django_redis.cache.RedisCache'
 
-    with mock.patch.object(environ.compat, 'DJANGO_VERSION', django_version):
+    with mock.patch.object(django, 'VERSION', django_version):
         with mock.patch('environ.compat.find_spec') as mock_find_spec:
             mock_find_spec.return_value = django_redis_installed
             driver = environ.compat.choose_rediscache_driver()
