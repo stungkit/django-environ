@@ -31,9 +31,10 @@ from urllib.parse import (
     urlunparse,
 )
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .compat import (
     DJANGO_POSTGRES,
-    ImproperlyConfigured,
     PYMEMCACHE_DRIVER,
     REDIS_DRIVER,
 )
